@@ -1,21 +1,22 @@
-cmake_minimum_required(VERSION 2.8.3)
-project(odva_ethernetip)
+cmake_minimum_required(VERSION 3.10)
 
-find_package(catkin REQUIRED)
-
-find_package(console_bridge REQUIRED)
-find_package(Boost 1.47 REQUIRED COMPONENTS system)
-
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}
-  DEPENDS Boost console_bridge
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Hunter/HunterGate.cmake)
+HunterGate(
+    URL "https://github.com/ruslo/hunter/archive/v0.23.158.tar.gz"
+    SHA1 "4f3d8287a546091d1968ee80e02f121b312fceea"
+    LOCAL # The project has a config.cmake file under cmake/hunter that should be used
 )
+
+project(odva_ethernetip VERSION 0.4.1)
+
+hunter_add_package(console_bridge)
+find_package(console_bridge CONFIG REQUIRED)
+
+hunter_add_package(Boost COMPONENTS system)
+find_package(Boost CONFIG REQUIRED system)
 
 include_directories(
   include
-  ${Boost_INCLUDE_DIRS}
-  ${console_bridge_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library for just Ethernet/IP generic stuff
@@ -33,20 +34,10 @@ add_library(${PROJECT_NAME}
   src/rr_data.cpp
   src/session.cpp
 )
-target_link_libraries(${PROJECT_NAME}
-  ${Boost_LIBRARIES}
-  ${console_bridge_LIBRARIES}
+target_link_libraries(${PROJECT_NAME} PUBLIC
+  Boost::system ros::console_bridge
 )
 
-## Mark executables and libraries for installation
-install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 
 if (CATKIN_ENABLE_TESTING)
   catkin_add_gtest(${PROJECT_NAME}-test
@@ -76,6 +67,41 @@ if (CATKIN_ENABLE_TESTING)
     test/session_test.cpp
     test/test_main.cpp
   )
-  target_link_libraries(${PROJECT_NAME}-test ${Boost_LIBRARIES} ${PROJECT_NAME})
+  target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 endif()
 
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+set(CONFIG_INSTALL_DIR ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmake/)
+
+install(DIRECTORY include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}Targets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install(EXPORT ${PROJECT_NAME}Targets
+  NAMESPACE ros::
+  DESTINATION ${CONFIG_INSTALL_DIR}
+)
+
+write_basic_package_version_file(
+  ${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+  VERSION ${PACKAGE_VERSION}
+  COMPATIBILITY AnyNewerVersion
+)
+
+configure_package_config_file(
+  ${PROJECT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
+  ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+  INSTALL_DESTINATION ${CONFIG_INSTALL_DIR}
+)
+
+install(
+  FILES ${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+  ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+  DESTINATION ${CONFIG_INSTALL_DIR}
+)

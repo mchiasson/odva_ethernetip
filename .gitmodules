@@ -1,0 +1,3 @@
+[submodule "dependencies/console_bridge"]
+	path = dependencies/console_bridge
+	url = git@github.com:mchiasson/console_bridge.git
